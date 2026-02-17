@@ -1,0 +1,54 @@
+#!/bin/bash
+# ==============================================================================
+# sysma - Minimalist System Maintenance for Debian/Ubuntu
+# Repository: https://github.com/njvdh/sysma
+# ==============================================================================
+
+set -e
+
+# Check for root privileges
+if [[ $EUID -ne 0 ]]; then
+   echo "Error: sysma must be run as root."
+   exit 1
+fi
+
+# Set non-interactive mode for automation
+export DEBIAN_FRONTEND=noninteractive
+
+echo ":: Updating package repositories..."
+apt-get update
+
+echo ":: Performing distribution upgrade..."
+apt-get -y dist-upgrade
+
+echo ":: Cleaning up unused packages and cache..."
+apt-get -y autoremove --purge
+apt-get -y autoclean
+
+# Remove residual configurations (rc status)
+RC_PACKAGES=$(dpkg -l | awk '/^rc/ { print $2 }')
+if [ -n "$RC_PACKAGES" ]; then
+    echo ":: Purging residual configuration files..."
+    apt-get purge -y $RC_PACKAGES
+fi
+
+# Handle Snap packages if installed
+if command -v snap >/dev/null 2>&1; then
+    echo ":: Refreshing snaps and removing old revisions..."
+    snap refresh
+    snap list --all | awk '/disabled/{print $1, $3}' | while read snapname revision; do
+        snap remove "$snapname" --revision="$revision"
+    done
+fi
+
+sync
+
+# Handle post-maintenance flags
+while getopts "rp" opt; do
+    case $opt in
+        r) echo ":: Maintenance complete. Rebooting..."; shutdown -r now ;;
+        p) echo ":: Maintenance complete. Powering off..."; shutdown -h now ;;
+    esac
+done
+
+echo ":: Maintenance complete."

@@ -14,3 +14,9 @@ To make `sysma` available system-wide:
 ```bash
 sudo cp sysma /usr/local/bin/sysma
 sudo chmod +x /usr/local/bin/sysma
+
+## Examples
+**Standard maintenance (Safe):**
+Just updates the OS and cleans up old packages.
+```bash
+sudo sysma
